@@ -34,7 +34,7 @@ private fun TreelessConversionContext.treelessNoCycleCase(case: Case) = when (va
             treeless(pat.expression.subst(pat.pattern.variables, scrutinee.arguments))
         } ?: case.defaultPattern?.let { pat ->
             /// Match with default branch
-            treeless(pat.name?.let { pat.expression.subst(it, scrutinee) } ?: pat.expression)
+            treeless(pat.expression.subst(pat.name, scrutinee))
         } ?: error("Matching failed")
     }
 

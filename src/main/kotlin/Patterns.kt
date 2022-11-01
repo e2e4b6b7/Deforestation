@@ -7,7 +7,7 @@ data class CaseBranch(val pattern: Pattern, val expression: Expression) {
         if (pattern.binds(name)) this else CaseBranch(pattern, expression.subst(name, expression))
 }
 
-data class DefaultCaseBranch(val name: String?, val expression: Expression) {
+data class DefaultCaseBranch(val name: String, val expression: Expression) {
     fun subst(name: String, expression: Expression) =
         if (this.name == name) this else DefaultCaseBranch(name, expression.subst(name, expression))
 }
