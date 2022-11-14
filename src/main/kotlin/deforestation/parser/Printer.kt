@@ -1,0 +1,51 @@
+package deforestation.parser
+
+import deforestation.expression.Pattern
+import deforestation.expression.debrujin.*
+import deforestation.expression.debrujin.Function
+
+private data class PrintingContext(val level: Int, val bounded: List<String>) {
+    fun up(levels: Int = 1) = PrintingContext(level + levels, bounded)
+    fun bind(names: List<String>) = PrintingContext(level, names.asReversed() + bounded)
+    fun bind(name: String) = PrintingContext(level, listOf(name) + bounded)
+}
+
+fun Program.print(): String =
+    functions.joinToString("\n") { it.print() } + "\n" + PrintingContext(0, emptyList()).print(expression)
+
+fun Function.print(): String =
+    "fun $name ${variables.joinToString(" ")} ->\n    ${PrintingContext(1, variables.asReversed()).print(expression)};"
+
+private fun PrintingContext.print(expr: DeBrujinExpression): String = when (expr) {
+    is Case -> print(expr)
+    is Constructor -> print(expr)
+    is FunctionCall -> print(expr)
+    is Variable -> print(expr)
+}
+
+private fun PrintingContext.print(expr: Variable): String = when (expr) {
+    is BoundedVariable -> "${bounded[expr.index]}(${expr.index})"
+    is FreeVariable -> expr.name
+}
+
+private fun PrintingContext.print(expr: Constructor): String =
+    if (expr.arguments.isEmpty()) expr.name else expr.name + " " + expr.arguments.joinToString(" ") { print(it) }
+
+private fun PrintingContext.print(expr: FunctionCall): String =
+    expr.name + "(" + expr.arguments.joinToString { print(it) } + ")"
+
+private fun PrintingContext.print(expr: Case): String =
+    "case ${print(expr.scrutinee)} of" + lb +
+            expr.branches.commonBranches.joinToString(lb) {
+                "${print(it.pattern)} -> ${up().bind(it.pattern.variables).print(it.expression)},"
+            } +
+            (expr.branches.defaultBranch?.let { lb + "${it.name} -> ${up().bind(it.name).print(it.expression)}," }
+                ?: "") +
+            slb +
+            "esac"
+
+private fun print(pat: Pattern): String =
+    if (pat.variables.isEmpty()) pat.constructor else pat.constructor + " " + pat.variables.joinToString(" ")
+
+private val PrintingContext.lb: String get() = "\n" + " ".repeat(4 * (level + 1))
+private val PrintingContext.slb: String get() = "\n" + " ".repeat(4 * level)

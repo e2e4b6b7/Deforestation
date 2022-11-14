@@ -9,17 +9,16 @@ fun DeBrujinExpression.subst(substIndex: Int, expression: DeBrujinExpression): D
     subst(0, substIndex, expression)
 
 private fun DeBrujinExpression.subst(
-    curDepth: Int,
+    depth: Int,
     substIndex: Int,
     expression: DeBrujinExpression
 ): DeBrujinExpression = when (this) {
     is FreeVariable -> this
-    is BoundedVariable -> if (index == substIndex + curDepth) expression.shift(curDepth) else this
-    is Constructor -> ConstructorImpl(name, arguments.map { it.subst(curDepth, substIndex, expression) })
-    is FunctionCall -> FunctionCallImpl(name, arguments.map { it.subst(curDepth, substIndex, expression) })
-    is Case -> CaseImpl(
-        scrutinee.subst(curDepth, substIndex, expression),
-        branches.map { it.copy(expression = it.expression.subst(curDepth + it.bounded, substIndex, expression)) },
-        defaultBranch?.let { it.copy(expression = it.expression.subst(curDepth + it.bounded, substIndex, expression)) }
+    is BoundedVariable -> if (index == substIndex + depth) expression.shift(depth) else this
+    is Constructor -> Constructor(name, arguments.map { it.subst(depth, substIndex, expression) })
+    is FunctionCall -> FunctionCall(name, arguments.map { it.subst(depth, substIndex, expression) })
+    is Case -> Case(
+        scrutinee.subst(depth, substIndex, expression),
+        branches.mapExpressions { it.expression.subst(depth + it.bounded, substIndex, expression) },
     )
 }

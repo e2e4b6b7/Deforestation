@@ -11,6 +11,7 @@ import deforestation.expression.CaseBranch
 import deforestation.expression.DefaultCaseBranch
 import deforestation.expression.Pattern
 import deforestation.expression.simple.*
+import deforestation.expression.simple.Function
 
 object LangParser : Grammar<Program>() {
     val ws by regexToken("\\s+", ignore = true)
@@ -20,6 +21,7 @@ object LangParser : Grammar<Program>() {
     val kwEsac = literalToken("esac")
     val kwFun = literalToken("fun")
     val kwComma = literalToken(",")
+    val kwSemicolon = literalToken(";")
     val kwOf = literalToken("of")
     val kwLBrace = literalToken("(")
     val kwRBrace = literalToken(")")
@@ -36,6 +38,7 @@ object LangParser : Grammar<Program>() {
             kwEsac,
             kwFun,
             kwComma,
+            kwSemicolon,
             kwOf,
             kwLBrace,
             kwRBrace,
@@ -76,6 +79,6 @@ object LangParser : Grammar<Program>() {
     val funDecl = -kwFun and functionId and zeroOrMore(variableId) and -kwArrow and expression map
             { (name, args, expr) -> Function(name.text, args.map { it.text }, expr) }
 
-    override val rootParser by zeroOrMore(funDecl and -kwComma) and expression map
+    override val rootParser by zeroOrMore(funDecl and -kwSemicolon) and expression map
             { (functions, ex) -> Program(functions, ex) }
 }

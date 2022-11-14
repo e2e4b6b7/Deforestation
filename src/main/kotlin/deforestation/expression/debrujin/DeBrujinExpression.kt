@@ -1,61 +1,28 @@
 package deforestation.expression.debrujin
 
-import deforestation.expression.CaseBranch
-import deforestation.expression.DefaultCaseBranch
+import deforestation.expression.Branches
 
 sealed interface DeBrujinExpression
 
-sealed interface Variable : DeBrujinExpression {
-//    val name: String
-}
+sealed interface Variable : DeBrujinExpression
 
-sealed interface BoundedVariable : Variable {
-    val index: Int
-}
+data class BoundedVariable(val index: Int) : Variable
 
-sealed interface FreeVariable : Variable {
-    val name: String
-}
+data class FreeVariable(val name: String) : Variable
 
-sealed interface Case : DeBrujinExpression {
-    val scrutinee: DeBrujinExpression
-    val branches: List<CaseBranch<DeBrujinExpression>>
-    val defaultBranch: DefaultCaseBranch<DeBrujinExpression>?
-}
+data class Case(
+    val scrutinee: DeBrujinExpression,
+    val branches: Branches<DeBrujinExpression>
+) : DeBrujinExpression
 
-sealed interface Constructor : DeBrujinExpression {
-    val name: String
+data class Constructor(
+    val name: String,
     val arguments: List<DeBrujinExpression>
-}
+) : DeBrujinExpression
 
-sealed interface FunctionCall : DeBrujinExpression {
-    val name: String
+data class FunctionCall(
+    val name: String,
     val arguments: List<DeBrujinExpression>
-}
+) : DeBrujinExpression
 
-/** Impls */
-
-data class BoundedVariableImpl(override val index: Int, override val name: String) : BoundedVariable
-
-data class FreeVariableImpl(override val name: String) : FreeVariable
-
-data class CaseImpl(
-    override val scrutinee: DeBrujinExpression,
-    override val branches: List<CaseBranch<DeBrujinExpression>>,
-    override val defaultBranch: DefaultCaseBranch<DeBrujinExpression>?
-) : Case
-
-data class ConstructorImpl(
-    override val name: String,
-    override val arguments: List<DeBrujinExpression>
-) : Constructor
-
-data class FunctionCallImpl(
-    override val name: String,
-    override val arguments: List<DeBrujinExpression>
-) : FunctionCall
-
-/** functions */
-
-val Case.allBranches
-    get() = defaultBranch?.let { branches.asSequence() + sequenceOf(it) } ?: branches.asSequence()
+val UNDEFINED = FreeVariable("undefined")

@@ -1,13 +1,7 @@
 package deforestation.expression.debrujin.algorithms
 
-import deforestation.expression.CaseBranch
-import deforestation.expression.DefaultCaseBranch
-import deforestation.expression.debrujin.Function
 import deforestation.expression.debrujin.*
-import deforestation.expression.debrujin.DeBrujinTreelessExpression
-import deforestation.expression.debrujin.TreelessBoundedVariable
-import deforestation.expression.debrujin.TreelessConstructor
-import deforestation.expression.debrujin.TreelessFreeVariable
+import deforestation.expression.debrujin.Function
 
 fun treeless(expr: DeBrujinExpression, context: MutableMap<String, Function>) =
     TreelessConversionContext(context, ArrayList(), ArrayList(), ArrayList()).treeless(expr)
@@ -19,24 +13,28 @@ private data class TreelessConversionContext(
     val cycleResolversRoots: MutableList<Pair<DeBrujinExpression, String>>,
 )
 
-private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBrujinTreelessExpression {
+private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBrujinExpression {
+    /// check if there is already a known function call for such an expression
     val resolver = cycleResolvers.find { it.first alphaEq expr }
     if (resolver != null) return foldCycle(expr, resolver)
 
+    /// check if there was already such an expression in the stack
     if (stack.any { it alphaEq expr }) return resolveCycle(expr)
 
+    /// transform
     stack.add(expr)
     val result = treelessNoCycle(expr)
     stack.removeLast()
 
+    /// check if that expression used as a folding prototype
     val asRoot = cycleResolversRoots.find { it.first === expr }
     return if (asRoot != null) {
-//        val fvs = expr.freeVariables
-//        fvs.asReversed().foldIndexed(result.shift(fvs.size)) { i, acc, arg ->
-//            acc.remap(arg.treeless().shift(fvs.size), TreelessBoundedVariable(i, arg.name))
-//        }
-        context[asRoot.second] = TreelessFunction(asRoot.second, expr.freeVariables.map { it.name }, result)
-        TreelessFunctionCall(asRoot.second, expr.freeVariables.map { it.treeless() })
+        context[asRoot.second] = Function(
+            asRoot.second,
+            expr.freeVariables.mapIndexed { i, v -> (v as? NamedIdentifier)?.name ?: "arg$i" },
+            result
+        )
+        FunctionCall(asRoot.second, expr.freeVariables.map { it.variable() })
     } else {
         result
     }
@@ -45,19 +43,19 @@ private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBruj
 private fun TreelessConversionContext.foldCycle(
     expr: DeBrujinExpression,
     resolver: Pair<DeBrujinExpression, String>
-): DeBrujinTreelessExpression {
+): DeBrujinExpression {
     val arguments = resolver.first.freeVariables
     val freeVariables = expr.freeVariables
     val argMapping = (resolver.first alphaEqMap expr)!!
 
-    return TreelessFunctionCall(
+    return FunctionCall(
         resolver.second,
-        arguments.map { arg -> freeVariables.find { it.name == argMapping[arg.name]!! }!!.treeless() })
+        arguments.map { arg -> freeVariables.find { it == argMapping[arg]!! }!!.variable() })
 }
 
-private fun TreelessConversionContext.resolveCycle(expr: DeBrujinExpression): DeBrujinTreelessExpression {
+private fun TreelessConversionContext.resolveCycle(expr: DeBrujinExpression): DeBrujinExpression {
     if (expr is FunctionCall && expr.arguments.all { it is Variable }) {
-        return TreelessFunctionCall(expr.name, expr.arguments.map { (it as Variable).treeless() })
+        return FunctionCall(expr.name, expr.arguments.map { (it as Variable) })
     }
 
     val root = stack.find { it alphaEq expr }!!
@@ -73,74 +71,43 @@ private fun TreelessConversionContext.generateNewFunctionName(): String {
     repeat(Int.MAX_VALUE) {
         val name = "_$it"
         if (context[name] == null) {
-            context[name] = FunctionImpl("tmp", emptyList(), FreeVariableImpl("tmp"))
+            context[name] = Function(name, emptyList(), UNDEFINED) // reserve name
             return name
         }
     }
     error("Too much functions")
 }
 
-private fun TreelessConversionContext.treelessNoCycle(expr: DeBrujinExpression): DeBrujinTreelessExpression =
+private fun TreelessConversionContext.treelessNoCycle(expr: DeBrujinExpression): DeBrujinExpression =
     when (expr) {
-        is Constructor -> TreelessConstructor(expr.name, expr.arguments.map { treeless(it) })
+        is Constructor -> Constructor(expr.name, expr.arguments.map { treeless(it) })
         is FunctionCall -> treeless(unfoldFunction(expr.name, expr.arguments))
         is Case -> treelessNoCycleCase(expr)
-        is BoundedVariable -> TreelessBoundedVariable(expr.index, expr.name)
-        is FreeVariable -> TreelessFreeVariable(expr.name)
+        is Variable -> expr
     }
 
 private fun TreelessConversionContext.treelessNoCycleCase(case: Case) = when (val scrutinee = case.scrutinee) {
-    is FreeVariable -> TreelessCase(
-        TreelessFreeVariable(scrutinee.name),
-        case.branches.map { CaseBranch(it.pattern, treeless(it.expression)) },
-        case.defaultBranch?.let { DefaultCaseBranch(it.name, treeless(it.expression)) }
-    )
-
-    is BoundedVariable -> TreelessCase(
-        TreelessBoundedVariable(scrutinee.index, scrutinee.name),
-        case.branches.map { CaseBranch(it.pattern, treeless(it.expression)) },
-        case.defaultBranch?.let { DefaultCaseBranch(it.name, treeless(it.expression)) }
-    )
+    is Variable -> case.copy(branches = case.branches.mapExpressions { treeless(it.expression) })
 
     is Constructor -> {
-        case.branches.find { it.pattern.constructor == scrutinee.name }?.let { pat ->
-            /// Match with branch
+        case.branches.commonBranches.find { it.pattern.constructor == scrutinee.name }?.let { pat ->
+            /// Match with common branch
             require(pat.pattern.variables.size == scrutinee.arguments.size) { "Invalid variables count in pattern" }
             treeless(pat.expression.resolve(scrutinee.arguments))
-        } ?: case.defaultBranch?.let { pat ->
+        } ?: case.branches.defaultBranch?.let {
             /// Match with default branch
-            treeless(pat.expression.resolve(scrutinee))
-        } ?: error("Matching failed")
+            treeless(it.expression.resolve(scrutinee))
+        } ?: error("Pattern matching failed")
     }
 
-    is FunctionCall -> treeless(
-        CaseImpl(
-            unfoldFunction(scrutinee.name, scrutinee.arguments),
-            case.branches,
-            case.defaultBranch
-        )
-    )
+    is FunctionCall -> treeless(case.copy(scrutinee = unfoldFunction(scrutinee.name, scrutinee.arguments)))
 
-    is Case -> treeless(CaseImpl(
+    is Case -> treeless(Case(
         scrutinee.scrutinee,
-        scrutinee.branches.map {
-            CaseBranch(
-                it.pattern,
-                CaseImpl(
-                    it.expression,
-                    case.branches.map { br -> br.copy(expression = br.expression.shift(it.bounded)) },
-                    case.defaultBranch?.let { br -> br.copy(expression = br.expression.shift(it.bounded)) }
-                )
-            )
-        },
-        scrutinee.defaultBranch?.let {
-            DefaultCaseBranch(
-                it.name,
-                CaseImpl(
-                    it.expression,
-                    case.branches.map { br -> br.copy(expression = br.expression.shift(it.bounded)) },
-                    case.defaultBranch?.let { br -> br.copy(expression = br.expression.shift(it.bounded)) }
-                )
+        scrutinee.branches.mapExpressions {
+            Case(
+                it.expression,
+                case.branches.mapExpressions { br -> br.expression.shift(it.bounded) },
             )
         }
     ))
@@ -151,10 +118,3 @@ private fun TreelessConversionContext.unfoldFunction(name: String, args: List<De
         require(f.variables.size == args.size) { "Invalid arguments count in function call" }
         f.expression.resolve(args)
     }
-
-private fun Variable.treeless(): TreelessVariable = when (this) {
-    is BoundedVariableImpl -> TreelessBoundedVariable(index, name)
-    is TreelessBoundedVariable -> this
-    is FreeVariableImpl -> TreelessFreeVariable(name)
-    is TreelessFreeVariable -> this
-}
