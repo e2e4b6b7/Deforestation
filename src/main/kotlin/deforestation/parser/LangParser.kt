@@ -1,3 +1,5 @@
+package deforestation.parser
+
 import com.github.h0tk3y.betterParse.combinators.*
 import com.github.h0tk3y.betterParse.grammar.Grammar
 import com.github.h0tk3y.betterParse.grammar.parser
@@ -5,6 +7,10 @@ import com.github.h0tk3y.betterParse.lexer.DefaultTokenizer
 import com.github.h0tk3y.betterParse.lexer.literalToken
 import com.github.h0tk3y.betterParse.lexer.regexToken
 import com.github.h0tk3y.betterParse.parser.Parser
+import deforestation.expression.CaseBranch
+import deforestation.expression.DefaultCaseBranch
+import deforestation.expression.Pattern
+import deforestation.expression.simple.*
 
 object LangParser : Grammar<Program>() {
     val ws by regexToken("\\s+", ignore = true)
@@ -47,7 +53,7 @@ object LangParser : Grammar<Program>() {
             { (name, args) -> Constructor(name.text, args) }
 
     val functionCall = functionId and -kwLBrace and separatedTerms(expr, kwComma) and -kwRBrace map
-            { (name, args) -> FunctionCallImpl(name.text, args) }
+            { (name, args) -> FunctionCall(name.text, args) }
 
     val pattern = constructorId and zeroOrMore(variableId) map
             { (constructor, args) -> Pattern(constructor.text, args.map { it.text }) }
@@ -60,7 +66,7 @@ object LangParser : Grammar<Program>() {
 
     val caseExpression =
         -kwCase and expr and -kwOf and zeroOrMore(caseBranch) and optional(defaultCaseBranch) and -kwEsac map
-                { (expr, branches, defaultBranch) -> CaseImpl(expr, branches, defaultBranch) }
+                { (expr, branches, defaultBranch) -> Case(expr, branches, defaultBranch) }
 
     val bracedExpression = -kwLBrace and expr and -kwRBrace
 

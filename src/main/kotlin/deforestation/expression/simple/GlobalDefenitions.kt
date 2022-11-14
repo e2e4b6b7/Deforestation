@@ -1,4 +1,4 @@
-data class ComputationContext(val functions: Map<String, Function>)
+package deforestation.expression.simple
 
 data class Program(val functions: List<Function>, val expression: Expression)
 
