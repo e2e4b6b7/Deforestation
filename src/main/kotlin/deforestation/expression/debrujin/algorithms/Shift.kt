@@ -4,7 +4,7 @@ import deforestation.expression.debrujin.*
 
 fun DeBrujinExpression.shift(level: Int): DeBrujinExpression = shift(level, 0)
 
-private fun DeBrujinExpression.shift(level: Int, depth: Int): DeBrujinExpression = when (this) {
+fun DeBrujinExpression.shift(level: Int, depth: Int): DeBrujinExpression = when (this) {
     is Constructor -> Constructor(name, arguments.map { it.shift(level, depth) })
     is FunctionCall -> FunctionCall(name, arguments.map { it.shift(level, depth) })
     is BoundedVariable -> if (free(depth)) BoundedVariable(index + level) else this

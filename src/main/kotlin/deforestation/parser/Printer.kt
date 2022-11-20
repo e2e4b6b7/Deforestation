@@ -16,6 +16,8 @@ fun Program.print(): String =
 fun Function.print(): String =
     "fun $name ${variables.joinToString(" ")} ->\n    ${PrintingContext(1, variables.asReversed()).print(expression)};"
 
+fun DeBrujinExpression.print(): String = PrintingContext(0, emptyList()).print(this)
+
 private fun PrintingContext.print(expr: DeBrujinExpression): String = when (expr) {
     is Case -> print(expr)
     is Constructor -> print(expr)
@@ -24,7 +26,7 @@ private fun PrintingContext.print(expr: DeBrujinExpression): String = when (expr
 }
 
 private fun PrintingContext.print(expr: Variable): String = when (expr) {
-    is BoundedVariable -> "${bounded[expr.index]}(${expr.index})"
+    is BoundedVariable -> "${bounded.getOrNull(expr.index) ?: "??"}(${expr.index})"
     is FreeVariable -> expr.name
 }
 

@@ -29,10 +29,12 @@ private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBruj
     /// check if that expression used as a folding prototype
     val asRoot = cycleResolversRoots.find { it.first === expr }
     return if (asRoot != null) {
+        val fvs = expr.freeVariables
+        val substitutions = fvs.asReversed().mapIndexed { i, fv -> fv to BoundedVariable(i) }
         context[asRoot.second] = Function(
             asRoot.second,
-            expr.freeVariables.mapIndexed { i, v -> (v as? NamedIdentifier)?.name ?: "arg$i" },
-            result
+            fvs.mapIndexed { i, v -> (v as? NamedIdentifier)?.name ?: "arg$i" },
+            result.subst(substitutions)
         )
         FunctionCall(asRoot.second, expr.freeVariables.map { it.variable() })
     } else {
@@ -43,15 +45,10 @@ private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBruj
 private fun TreelessConversionContext.foldCycle(
     expr: DeBrujinExpression,
     resolver: Pair<DeBrujinExpression, String>
-): DeBrujinExpression {
-    val arguments = resolver.first.freeVariables
-    val freeVariables = expr.freeVariables
-    val argMapping = (resolver.first alphaEqMap expr)!!
-
-    return FunctionCall(
-        resolver.second,
-        arguments.map { arg -> freeVariables.find { it == argMapping[arg]!! }!!.variable() })
-}
+): DeBrujinExpression = FunctionCall(
+    resolver.second,
+    expr.freeVariables.map { fv -> fv.variable() }
+)
 
 private fun TreelessConversionContext.resolveCycle(expr: DeBrujinExpression): DeBrujinExpression {
     if (expr is FunctionCall && expr.arguments.all { it is Variable }) {
@@ -107,7 +104,7 @@ private fun TreelessConversionContext.treelessNoCycleCase(case: Case) = when (va
         scrutinee.branches.mapExpressions {
             Case(
                 it.expression,
-                case.branches.mapExpressions { br -> br.expression.shift(it.bounded) },
+                case.branches.mapExpressions { br -> br.expression.shift(it.bounded, br.bounded) },
             )
         }
     ))

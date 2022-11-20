@@ -66,18 +66,12 @@ internal class MainTest {
                     Leaf z -> Leaf z(0),
                     Branch xt yt -> Branch _flip(yt(0)) _flip(xt(1)),
                 esac;
-            fun _0 arg0 arg1 ->
-                Branch case arg1(0) of
+            fun _0 zt ->
+                case zt(0) of
                     Leaf z -> Leaf z(0),
-                    Branch xt yt -> _0(yt(0), xt(1)),
-                esac case arg0(1) of
-                    Leaf z -> Leaf z(0),
-                    Branch xt yt -> _0(yt(0), xt(1)),
+                    Branch xt yt -> Branch _0(xt(1)) _0(yt(0)),
                 esac;
-            case zt of
-                Leaf z -> Leaf z(0),
-                Branch xt yt -> _0(yt(0), xt(1)),
-            esac
+            _0(zt)
         """.trimIndent()
     )
 
@@ -117,6 +111,38 @@ internal class MainTest {
                     Nil -> _flatten(xss(0)),
                     Cons x xs -> Cons x(1) _0(xs(0), xss(2)),
                 esac,
+            esac
+        """.trimIndent()
+    )
+
+    @Test
+    fun `double append test`() = check(
+        before = """
+            fun _append xs ys -> 
+                case xs of
+                    Nil -> ys,
+                    Cons x xs -> Cons x _append(xs, ys),
+                esac;
+            _append(_append(xsa, ysa), xsa)
+        """.trimIndent(), after = """
+            fun _append xs ys ->
+                case xs(1) of
+                    Nil -> ys(0),
+                    Cons x xs -> Cons x(1) _append(xs(0), ys(2)),
+                esac;
+            fun _0 ysa xsa ->
+                case ysa(1) of
+                    Nil -> xsa(0),
+                    Cons x xs -> Cons x(1) _0(xs(0), xsa(2)),
+                esac;
+            fun _1 arg0 arg1 ysa xsa ->
+                Cons arg0(3) case arg1(2) of
+                    Nil -> _0(ysa(1), xsa(0)),
+                    Cons x xs -> _1(x(1), xs(0), ysa(3), xsa(2)),
+                esac;
+            case xsa of
+                Nil -> _0(ysa, xsa),
+                Cons x xs -> _1(x(1), xs(0), ysa, xsa),
             esac
         """.trimIndent()
     )
