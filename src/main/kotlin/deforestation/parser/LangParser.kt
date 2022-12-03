@@ -7,9 +7,9 @@ import com.github.h0tk3y.betterParse.lexer.DefaultTokenizer
 import com.github.h0tk3y.betterParse.lexer.literalToken
 import com.github.h0tk3y.betterParse.lexer.regexToken
 import com.github.h0tk3y.betterParse.parser.Parser
-import deforestation.expression.CaseBranch
-import deforestation.expression.DefaultCaseBranch
-import deforestation.expression.Pattern
+import deforestation.expression.branches.CaseBranch
+import deforestation.expression.branches.DefaultCaseBranch
+import deforestation.expression.branches.Pattern
 import deforestation.expression.simple.*
 import deforestation.expression.simple.Function
 
@@ -18,11 +18,14 @@ object LangParser : Grammar<Program>() {
 
     val kwArrow = literalToken("->")
     val kwCase = literalToken("case")
+    val kwOf = literalToken("of")
     val kwEsac = literalToken("esac")
+
+    //    val kwLet = literalToken("let")
+//    val kwIn = literalToken("in")
     val kwFun = literalToken("fun")
     val kwComma = literalToken(",")
     val kwSemicolon = literalToken(";")
-    val kwOf = literalToken("of")
     val kwLBrace = literalToken("(")
     val kwRBrace = literalToken(")")
 
@@ -35,11 +38,11 @@ object LangParser : Grammar<Program>() {
             ws,
             kwArrow,
             kwCase,
+            kwOf,
             kwEsac,
             kwFun,
             kwComma,
             kwSemicolon,
-            kwOf,
             kwLBrace,
             kwRBrace,
             variableId,

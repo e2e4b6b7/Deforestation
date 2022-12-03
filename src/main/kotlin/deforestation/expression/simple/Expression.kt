@@ -1,7 +1,7 @@
 package deforestation.expression.simple
 
-import deforestation.expression.CaseBranch
-import deforestation.expression.DefaultCaseBranch
+import deforestation.expression.branches.CaseBranch
+import deforestation.expression.branches.DefaultCaseBranch
 
 sealed interface Expression
 

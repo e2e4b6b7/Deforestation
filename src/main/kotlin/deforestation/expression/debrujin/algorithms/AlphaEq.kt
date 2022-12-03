@@ -1,5 +1,6 @@
 package deforestation.expression.debrujin.algorithms
 
+import deforestation.expression.branches.algorithms.sameStructure
 import deforestation.expression.debrujin.*
 
 infix fun DeBrujinExpression.alphaEq(other: DeBrujinExpression): Boolean = alphaEqMap(other) != null
@@ -44,14 +45,7 @@ private fun alphaEq(
 
     e1 is Case && e2 is Case ->
         alphaEq(e1.scrutinee, e2.scrutinee, depth, accum) &&
-
-                e1.branches.commonBranches.size == e2.branches.commonBranches.size &&
-                e1.branches.commonBranches.zip(e2.branches.commonBranches)
-                    .all { (b1, b2) -> b1.pattern.constructor == b2.pattern.constructor } &&
-                e1.branches.commonBranches.zip(e2.branches.commonBranches)
-                    .all { (b1, b2) -> b1.pattern.variables.size == b2.pattern.variables.size } &&
-
-                e1.branches.size == e2.branches.size &&
+                e1.branches sameStructure e2.branches &&
                 e1.branches.zip(e2.branches)
                     .all { (b1, b2) -> alphaEq(b1.expression, b2.expression, depth + b1.bounded, accum) }
 

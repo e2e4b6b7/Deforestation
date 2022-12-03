@@ -1,6 +1,6 @@
 package deforestation.parser
 
-import deforestation.expression.Pattern
+import deforestation.expression.branches.Pattern
 import deforestation.expression.debrujin.*
 import deforestation.expression.debrujin.Function
 
@@ -37,6 +37,14 @@ private fun PrintingContext.print(expr: FunctionCall): String =
     expr.name + "(" + expr.arguments.joinToString { print(it) } + ")"
 
 private fun PrintingContext.print(expr: Case): String =
+    if (expr.branches.commonBranches.isEmpty()) printLet(expr) else printCase(expr)
+
+private fun PrintingContext.printLet(expr: Case) =
+    expr.branches.defaultBranch!!.let {
+        "let ${it.name} = ${print(expr.scrutinee)} in" + slb + bind(it.name).print(it.expression)
+    }
+
+private fun PrintingContext.printCase(expr: Case) =
     "case ${print(expr.scrutinee)} of" + lb +
             expr.branches.commonBranches.joinToString(lb) {
                 "${print(it.pattern)} -> ${up().bind(it.pattern.variables).print(it.expression)},"

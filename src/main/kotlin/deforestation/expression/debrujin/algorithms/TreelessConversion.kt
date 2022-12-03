@@ -4,7 +4,7 @@ import deforestation.expression.debrujin.*
 import deforestation.expression.debrujin.Function
 
 fun treeless(expr: DeBrujinExpression, context: MutableMap<String, Function>) =
-    TreelessConversionContext(context, ArrayList(), ArrayList(), ArrayList()).treeless(expr)
+    TreelessConversionContext(context, ArrayList(), ArrayList(), ArrayList()).sc(expr)
 
 private data class TreelessConversionContext(
     val context: MutableMap<String, Function>,
@@ -13,7 +13,7 @@ private data class TreelessConversionContext(
     val cycleResolversRoots: MutableList<Pair<DeBrujinExpression, String>>,
 )
 
-private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBrujinExpression {
+private fun TreelessConversionContext.sc(expr: DeBrujinExpression): DeBrujinExpression {
     /// check if there is already a known function call for such an expression
     val resolver = cycleResolvers.find { it.first alphaEq expr }
     if (resolver != null) return foldCycle(expr, resolver)
@@ -23,7 +23,7 @@ private fun TreelessConversionContext.treeless(expr: DeBrujinExpression): DeBruj
 
     /// transform
     stack.add(expr)
-    val result = treelessNoCycle(expr)
+    val result = scTransform(expr)
     stack.removeLast()
 
     /// check if that expression used as a folding prototype
@@ -75,31 +75,31 @@ private fun TreelessConversionContext.generateNewFunctionName(): String {
     error("Too much functions")
 }
 
-private fun TreelessConversionContext.treelessNoCycle(expr: DeBrujinExpression): DeBrujinExpression =
+private fun TreelessConversionContext.scTransform(expr: DeBrujinExpression): DeBrujinExpression =
     when (expr) {
-        is Constructor -> Constructor(expr.name, expr.arguments.map { treeless(it) })
-        is FunctionCall -> treeless(unfoldFunction(expr.name, expr.arguments))
-        is Case -> treelessNoCycleCase(expr)
+        is Constructor -> Constructor(expr.name, expr.arguments.map { sc(it) })
+        is FunctionCall -> sc(unfoldFunction(expr.name, expr.arguments))
+        is Case -> scCase(expr)
         is Variable -> expr
     }
 
-private fun TreelessConversionContext.treelessNoCycleCase(case: Case) = when (val scrutinee = case.scrutinee) {
-    is Variable -> case.copy(branches = case.branches.mapExpressions { treeless(it.expression) })
+private fun TreelessConversionContext.scCase(case: Case) = when (val scrutinee = case.scrutinee) {
+    is Variable -> case.copy(branches = case.branches.mapExpressions { sc(it.expression) })
 
     is Constructor -> {
         case.branches.commonBranches.find { it.pattern.constructor == scrutinee.name }?.let { pat ->
             /// Match with common branch
             require(pat.pattern.variables.size == scrutinee.arguments.size) { "Invalid variables count in pattern" }
-            treeless(pat.expression.resolve(scrutinee.arguments))
+            sc(pat.expression.resolve(scrutinee.arguments))
         } ?: case.branches.defaultBranch?.let {
             /// Match with default branch
-            treeless(it.expression.resolve(scrutinee))
+            sc(it.expression.resolve(scrutinee))
         } ?: error("Pattern matching failed")
     }
 
-    is FunctionCall -> treeless(case.copy(scrutinee = unfoldFunction(scrutinee.name, scrutinee.arguments)))
+    is FunctionCall -> sc(case.copy(scrutinee = unfoldFunction(scrutinee.name, scrutinee.arguments)))
 
-    is Case -> treeless(Case(
+    is Case -> sc(Case(
         scrutinee.scrutinee,
         scrutinee.branches.mapExpressions {
             Case(

@@ -1,6 +1,6 @@
 package deforestation.expression.debrujin
 
-import deforestation.expression.Branches
+import deforestation.expression.branches.Branches
 
 sealed interface DeBrujinExpression
 

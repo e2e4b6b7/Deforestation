@@ -1,8 +1,8 @@
 package deforestation.expression.simple.algorithms
 
-import deforestation.expression.Branches
-import deforestation.expression.CaseBranch
-import deforestation.expression.DefaultCaseBranch
+import deforestation.expression.branches.Branches
+import deforestation.expression.branches.CaseBranch
+import deforestation.expression.branches.DefaultCaseBranch
 import deforestation.expression.debrujin.BoundedVariable
 import deforestation.expression.debrujin.DeBrujinExpression
 import deforestation.expression.debrujin.FreeVariable
