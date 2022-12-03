@@ -1,4 +1,4 @@
-# Deforestation
+# Super Compilation
 
 ДЗ по курсу Метавычисления
 
@@ -14,4 +14,4 @@
 
 Алгоритмы: `src/main/kotlin/deforestation/expression/debrujin/algorithms`
 
-Тесты: `src/test/kotlin/MainTest`
+Тесты: `src/test/kotlin/SCTest`
