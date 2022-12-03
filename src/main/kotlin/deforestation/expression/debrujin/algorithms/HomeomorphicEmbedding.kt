@@ -40,7 +40,7 @@ private infix fun DeBrujinExpression.homeomorphicEmbeddedEqual(other: DeBrujinEx
 }
 
 private fun DeBrujinExpression.homeomorphicEmbeddedDecrease(other: DeBrujinExpression): Boolean = when (other) {
-//    is Case -> other.branches.allBranches.any { homeomorphicEmbedded(it.expression) }
+    is Case -> other.branches.allBranches.any { homeomorphicEmbedded(it.expression) }
     is Constructor -> other.arguments.any { homeomorphicEmbeddedAny(it) }
     is FunctionCall -> other.arguments.any { homeomorphicEmbeddedAny(it) }
     else -> false
